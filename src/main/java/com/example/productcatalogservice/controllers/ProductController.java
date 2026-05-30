@@ -2,25 +2,42 @@ package com.example.productcatalogservice.controllers;
 
 import com.example.productcatalogservice.dtos.CategoryDto;
 import com.example.productcatalogservice.dtos.ProductDto;
+import com.example.productcatalogservice.models.Category;
 import com.example.productcatalogservice.models.Product;
 import com.example.productcatalogservice.services.IProductService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 
+@RequestMapping("/product")
 public class ProductController {
 
     @Autowired
     private IProductService productService;
 
-    @GetMapping("product/{id}")
-    public ProductDto getProductById(@PathVariable Long id) {
+    @GetMapping("{id}")
+    public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
+        if(id<=0){
+            throw new IllegalArgumentException("Pass the id greater than 0");
+            //return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
         Product product = productService.getProductById(id);
-        product.setId(id);
-        return from(product);
+        if(product == null) {throw new RuntimeException("Product not found");}
+        ProductDto productDto= from(product);
+        ResponseEntity<ProductDto> productDtoResponseEntity = new ResponseEntity<>(productDto, HttpStatus.OK);
+        return productDtoResponseEntity;
+    }
+
+    @PutMapping("{id}")
+    public ResponseEntity<ProductDto> replaceProduct(@PathVariable Long id, @RequestBody ProductDto productDto) {
+        Product product=productService.replaceProduct(id,from(productDto));
+        if(product == null) {return null;}
+        ProductDto productDto1= from(product);
+        ResponseEntity<ProductDto> productDtoResponseEntity = new ResponseEntity<>(productDto, HttpStatus.OK);
+        return productDtoResponseEntity;
     }
 
     private ProductDto from(Product product) {
@@ -38,5 +55,21 @@ public class ProductController {
             productDto.setCategory(categoryDto);
         }
         return productDto;
+    }
+
+    private Product from(ProductDto productDto) {
+        Product product = new Product();
+        product.setId(productDto.getId());
+        product.setName(productDto.getName());
+        product.setDescription(productDto.getDescription());
+        product.setImageUrl(productDto.getImageUrl());
+        product.setPrice(productDto.getPrice());
+        if(productDto.getCategory() != null){
+            Category category = new Category();
+            category.setName(productDto.getCategory().getName());
+            category.setId(productDto.getCategory().getId());
+            product.setCategory(category);
+        }
+        return product;
     }
 }
